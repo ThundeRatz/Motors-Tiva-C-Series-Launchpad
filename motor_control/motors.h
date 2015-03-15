@@ -44,6 +44,10 @@
 #define __MOTORS_H__
 
 void motors_init();
-void motors(int16_t left, int16_t right);
+void motors(int8_t command);
+void motor_left(int8_t pwm_value);
+void motor_right(int8_t pwm_value);
+
+extern uint8_t speed_left, speed_right;
 
 #endif

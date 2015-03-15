@@ -50,7 +50,7 @@ ROOT=../TivaWare
 #
 # Include the common make definitions.
 #
-include ${ROOT}/makedefs
+include makedefs
 
 #
 # Where to find header files that do not live in the source directory.
@@ -83,6 +83,7 @@ ${COMPILER}/motor_control.axf: ${COMPILER}/leds.o
 ${COMPILER}/motor_control.axf: ${COMPILER}/motors.o
 ${COMPILER}/motor_control.axf: ${COMPILER}/uart.o
 ${COMPILER}/motor_control.axf: ${COMPILER}/voltwatch.o
+${COMPILER}/motor_control.axf: ${COMPILER}/watchdog.o
 ${COMPILER}/motor_control.axf: ${COMPILER}/startup_${COMPILER}.o
 ${COMPILER}/motor_control.axf: ${ROOT}/driverlib/${COMPILER}/libdriver.a
 ${COMPILER}/motor_control.axf: project.ld

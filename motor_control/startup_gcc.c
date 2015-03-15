@@ -57,9 +57,13 @@
 //
 //*****************************************************************************
 int main();
+void UART_ISR();
 void voltwatch_ISR();
+void watchdog_ISR();
 void ResetISR(void);
+static void NMI_ISR(void);
 static void IntDefaultHandler(void);
+static void hard_fault_ISR(void);
 
 //*****************************************************************************
 //
@@ -75,13 +79,12 @@ static uint32_t pui32Stack[64];
 //
 //*****************************************************************************
 __attribute__ ((section(".isr_vector")))
-void (* const g_pfnVectors[])(void) =
-{
+void (* const g_pfnVectors[])(void) = {
     (void (*)(void))((uint32_t)pui32Stack + sizeof(pui32Stack)),
                                             // The initial stack pointer
     ResetISR,                               // The reset handler
-    IntDefaultHandler,                      // The NMI handler
-    IntDefaultHandler,                      // The hard fault handler
+    NMI_ISR,                                // The NMI handler
+    hard_fault_ISR,                         // The hard fault handler
     IntDefaultHandler,                      // The MPU fault handler
     IntDefaultHandler,                      // The bus fault handler
     IntDefaultHandler,                      // The usage fault handler
@@ -115,8 +118,8 @@ void (* const g_pfnVectors[])(void) =
     IntDefaultHandler,                      // ADC Sequence 2
 
     voltwatch_ISR,                          // ADC Sequence 3
+    watchdog_ISR,                           // Watchdog timer
 
-    IntDefaultHandler,                      // Watchdog timer
     IntDefaultHandler,                      // Timer 0 subtimer A
     IntDefaultHandler,                      // Timer 0 subtimer B
     IntDefaultHandler,                      // Timer 1 subtimer A
@@ -262,9 +265,7 @@ extern uint32_t _ebss;
 // application.
 //
 //*****************************************************************************
-void
-ResetISR(void)
-{
+void ResetISR(void) {
     uint32_t *pui32Src, *pui32Dest;
 
     //
@@ -318,12 +319,22 @@ ResetISR(void)
 // for examination by a debugger.
 //
 //*****************************************************************************
-static void IntDefaultHandler(void)
-{
+static void IntDefaultHandler(void) {
     //
     // Go into an infinite loop.
     //
-    while(1)
-    {
-    }
+    for (;;) ;
+}
+
+//
+// Just to make it easier to identify common faults on the debugger.
+// NMI_ISR and hard_fault_ISR could de replaced by IntDefaultHandler.
+//
+
+static void NMI_ISR(void) {
+    for (;;) ;
+}
+
+static void hard_fault_ISR(void) {
+    for (;;) ;
 }

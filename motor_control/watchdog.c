@@ -45,90 +45,52 @@
 
 #include "inc/hw_memmap.h"
 #include "inc/hw_ints.h"
-#include "driverlib/pin_map.h"
-#include "driverlib/uart.h"
-#include "driverlib/gpio.h"
+#include "driverlib/sysctl.h"
+#include "driverlib/interrupt.h"
+#include "driverlib/watchdog.h"
 #include "driverlib/rom.h"
 
-#include "system_clock.h"
-#include "motors.h"
-#include "watchdog.h"
+void watchdog_ISR();
 
-#include "leds.h"
-
-///@defgroup uart UART0 command receiver
+///@defgroup watchdog Watchdog
 ///@{
 
-/**
- * Initialize UART.
- * Initialize UART0 for receiving commands. Uses pins PA0 and PA1 and 2400 baud.
- * Its interrupt has priority 1.
+/** 
+ * Initialize the watchdog.
+ * Initialize WATCHDOG0_BASE with reset capability, debug stall and highest
+ * priority and lock it.
  */
-void UART_init() {
-	// Configure PA0, PA1 as UART
-	ROM_GPIOPinConfigure(GPIO_PA0_U0RX);
-	ROM_GPIOPinConfigure(GPIO_PA1_U0TX);
-	ROM_GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
-	
-	ROM_UARTConfigSetExpClk(UART0_BASE, SYSTEM_CLOCK, 2400,
-		(UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE));
-	
-	ROM_IntPrioritySet(INT_UART0, 1 << 5);
-	ROM_IntEnable(INT_UART0);
-	ROM_UARTIntEnable(UART0_BASE, UART_INT_OE | UART_INT_BE |
-		UART_INT_PE | UART_INT_FE | UART_INT_RT | UART_INT_RX);
+void watchdog_init() {
+	ROM_WatchdogResetEnable(WATCHDOG0_BASE);
+	ROM_WatchdogStallEnable(WATCHDOG0_BASE);
+	ROM_WatchdogReloadSet(WATCHDOG0_BASE, 30000000);
+	ROM_IntPrioritySet(INT_WATCHDOG, 0);
+	///@todo Is this even needed?
+	WatchdogIntRegister(WATCHDOG0_BASE, watchdog_ISR);
+	ROM_WatchdogEnable(WATCHDOG0_BASE);
+	ROM_WatchdogIntEnable(WATCHDOG0_BASE);
+	ROM_WatchdogLock(WATCHDOG0_BASE);
 }
 
-#ifdef DEBUG
-// 0 = UART_INT_RI
-// 1 = UART_INT_CTS
-// 2 = UART_INT_DCD
-// 3 = UART_INT_DSR
-// 4 = UART_INT_RX
-// 5 = UART_INT_TX
-// 6 = UART_INT_RT
-// 7 = UART_INT_FE
-// 8 = UART_INT_PE
-// 9 = UART_INT_BE
-// 10 = UART_INT_OE
-// 12 = UART_INT_9BIT
-// 16 = UART_INT_DMARX
-// 17 = UART_INT_DMATX
-// Set unused numbers to 0xffffffff to identify them easily when debugging
-static unsigned int error_count[32] = {[11] = 0xffffffff, [13] = 0xffffffff,
-	[14] = 0xffffffff, [15] = 0xffffffff, [18 ... 31] = 0xffffffff};
-#endif
-
-/**
- * UART Interrupt Service Routine.
- * Calls motors() with received commands.
- * @see motors
+/** 
+ * Reset watchdog.
+ * Unlock and reset WATCHDOG0_BASE.
  */
-void UART_ISR() {
-	uint32_t int_status;
-	leds_b(4000);
-	int_status = ROM_UARTIntStatus(UART0_BASE, true);
-	ROM_UARTIntClear(UART0_BASE, int_status);
-	
-	// Iterate over each status bit
-	for (; int_status; int_status &= int_status - 1) {
-		switch (int_status & -int_status) {
-			case UART_INT_RX:
-			watchdog_reset();
-			while (ROM_UARTCharsAvail(UART0_BASE))
-				motors(ROM_UARTCharGet(UART0_BASE));
-			break;
-			
-			case UART_INT_OE: case UART_INT_BE:
-			case UART_INT_PE: case UART_INT_FE:
-			case UART_INT_RT:
-			leds_status(4095);
-#ifdef DEBUG
-			error_count[__builtin_clz(int_status)]++;
-#endif
-			break;
-		}
-	}
+void watchdog_reset() {
+	ROM_WatchdogUnlock(WATCHDOG0_BASE);
+	ROM_WatchdogReloadSet(WATCHDOG0_BASE, 30000000);
+	ROM_WatchdogLock(WATCHDOG0_BASE);
+}
+
+/** 
+ * Watchdog Interrupt Service Routine.
+ * Called at watchdog interrupt. Will do a software reset of the processor.
+ */
+void watchdog_ISR() {
+	// Reset on first timeout
+	// If the ISR is misconfigured, the interrupt flag will be left set and the
+	// watchdog will reset on second timeout
+	ROM_SysCtlReset();
 }
 
 ///@}

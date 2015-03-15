@@ -44,13 +44,44 @@
 #include <stdint.h>
 
 #include "inc/hw_memmap.h"
+#include "inc/hw_ints.h"
 #include "driverlib/pin_map.h"
 #include "driverlib/gpio.h"
-#include "driverlib/rom.h"
 #include "driverlib/adc.h"
+#include "driverlib/rom.h"
 
 #include "leds.h"
 
+///@defgroup voltwatch Voltwatch
+///@{
+
+/**
+ * Initialize voltwatch.
+ * Initialize ADC0 and use SS3 to sample battery voltage and issue an interrupt.
+ * Has lowest priority (7).
+ */
+void voltwatch_init() {
+	ROM_GPIOPinTypeADC(GPIO_PORTE_BASE, GPIO_PIN_3);
+	
+	ADCClockConfigSet(ADC0_BASE, ADC_CLOCK_SRC_PIOSC | ADC_CLOCK_RATE_EIGHTH, 1);
+	ROM_ADCHardwareOversampleConfigure(ADC0_BASE, 32);
+	
+	///@todo Change to ADC_TRIGGER_TIMER and configure a timer
+	ROM_ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_ALWAYS, 0);
+	ROM_ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH1 | ADC_CTL_END |
+		ADC_CTL_IE);
+	
+	ROM_ADCSequenceEnable(ADC0_BASE, 3);
+	ROM_IntPrioritySet(INT_ADC0SS3, 7 << 5);
+	ROM_IntEnable(INT_ADC0SS3);
+	ROM_ADCIntEnable(ADC0_BASE, 3);
+}
+
+/**
+ * Voltwatch Interrupt Service Routine.
+ * Called when the ADC has data for us. Sets red and green led according to
+ * battery voltage.
+ */
 void voltwatch_ISR() {
 	uint32_t voltage;
 	
@@ -60,22 +91,8 @@ void voltwatch_ISR() {
 	// 4 sample buffer
 	ROM_ADCSequenceDataGet(ADC0_BASE, 3, &voltage);
 	
-	leds_r(4096 - voltage);
+	leds_r(4095 - voltage);
 	leds_g(voltage);
 }
 
-void voltwatch_init() {
-	ROM_GPIOPinTypeADC(GPIO_PORTE_BASE, GPIO_PIN_3);
-	
-	ADCClockConfigSet(ADC0_BASE, ADC_CLOCK_SRC_PIOSC | ADC_CLOCK_RATE_EIGHTH, 1);
-	ROM_ADCHardwareOversampleConfigure(ADC0_BASE, 32);
-	
-	///@TODO: Change to ADC_TRIGGER_TIMER and configure a timer
-	ROM_ADCSequenceConfigure(ADC0_BASE, 3, ADC_TRIGGER_ALWAYS, 0);
-	ROM_ADCSequenceStepConfigure(ADC0_BASE, 3, 0, ADC_CTL_CH1 | ADC_CTL_END |
-		ADC_CTL_IE);
-	
-	ROM_ADCSequenceEnable(ADC0_BASE, 3);
-	ADCIntRegister(ADC0_BASE, 3, voltwatch_ISR);
-	ROM_ADCIntEnable(ADC0_BASE, 3);
-}
+///@}

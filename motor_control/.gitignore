@@ -42,3 +42,6 @@
 
 # Ignore make generated files
 gcc/
+
+# Ignore Doxygen output
+Doxygen/

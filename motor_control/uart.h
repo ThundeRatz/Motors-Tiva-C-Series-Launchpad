@@ -44,6 +44,5 @@
 #define __UART_H__
 
 void UART_init();
-void UART_ISR();
 
 #endif

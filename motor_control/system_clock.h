@@ -50,7 +50,9 @@
 #define PWM_CLOCK_DIV	64
 
 #ifndef SYSTEM_CLOCK
-#define SYSTEM_CLOCK	SysCtlClockGet()
+#include "driverlib/sysctl.h"
+#include "driverlib/rom.h"
+#define SYSTEM_CLOCK	ROM_SysCtlClockGet()
 #endif
 
 #endif

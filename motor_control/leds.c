@@ -52,6 +52,14 @@
 #include "system_clock.h"
 #include "leds.h"
 
+///@defgroup leds LEDs
+///@{
+
+/**
+ * Initialize LEDs.
+ * Initialize M1PWM5, M1PWM6, M1PWM7 (Tiva RGB LED) and M0PWM0, M0PWM1 (STATUS
+ * and LBATT). Period is set to 4096.
+ */
 void leds_init() {
 	// Configure PF1, PF2, PF3 (RGB LED), PB6 (STATUS) and PB7 (L. BAT) as PWM
 	ROM_GPIOPinConfigure(GPIO_PF1_M1PWM5);
@@ -94,3 +102,5 @@ void leds_init() {
 	ROM_PWMOutputState(PWM1_BASE, PWM_OUT_5_BIT | PWM_OUT_6_BIT | PWM_OUT_7_BIT, true);
 	ROM_PWMOutputState(PWM0_BASE, PWM_OUT_0_BIT | PWM_OUT_1_BIT, true);
 }
+
+///@}

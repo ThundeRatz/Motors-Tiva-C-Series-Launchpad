@@ -40,38 +40,10 @@
 // https://github.com/ThundeRatz/trekking-magellan-docs
 //*****************************************************************************
 
-#ifndef __PWM_H__
+#ifndef __WATCHDOG_H__
+#define __WATCHDOG_H__
 
-#include "system_clock.h"
-
-///@defgroup pwm PWM
-///@{
-
-/**
- * Initialize PWM clock generation.
- * Set the clock divider. Specific configurations for PWM modules, banks and
- * pins are left for other files.
- */
-static inline void pwm_init() {
-#if PWM_CLOCK_DIV == 1
-	ROM_SysCtlPWMClockSet(SYSCTL_PWMDIV_1);
-#elif PWM_CLOCK_DIV == 2
-	ROM_SysCtlPWMClockSet(SYSCTL_PWMDIV_2);
-#elif PWM_CLOCK_DIV == 4
-	ROM_SysCtlPWMClockSet(SYSCTL_PWMDIV_4);
-#elif PWM_CLOCK_DIV == 8
-	ROM_SysCtlPWMClockSet(SYSCTL_PWMDIV_8);
-#elif PWM_CLOCK_DIV == 16
-	ROM_SysCtlPWMClockSet(SYSCTL_PWMDIV_16);
-#elif PWM_CLOCK_DIV == 32
-	ROM_SysCtlPWMClockSet(SYSCTL_PWMDIV_32);
-#elif PWM_CLOCK_DIV == 64
-	ROM_SysCtlPWMClockSet(SYSCTL_PWMDIV_64);
-#else
-#error Invalid PWM clock divider
-#endif
-}
+void watchdog_init();
+void watchdog_reset();
 
 #endif
-
-///@}

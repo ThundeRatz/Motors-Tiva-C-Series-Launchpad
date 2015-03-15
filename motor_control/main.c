@@ -40,11 +40,10 @@
 // https://github.com/ThundeRatz/trekking-magellan-docs
 //*****************************************************************************
 
-#define DELAY			400
+#define RAMP			400
 
 #include <stdbool.h>
 #include <stdint.h>
-//#include "inc/hw_gpio.h"
 #include "inc/hw_memmap.h"
 #include "driverlib/sysctl.h"
 #include "driverlib/pin_map.h"
@@ -53,12 +52,12 @@
 #include "driverlib/rom.h"
 #include "driverlib/uart.h"
 
-#include "system_clock.h"
 #include "pwm.h"
 #include "motors.h"
 #include "uart.h"
 #include "leds.h"
 #include "voltwatch.h"
+#include "watchdog.h"
 
 // The clock is left at default internal 16 MHz, but can be changed to higher/
 // lower frequencies with SysCtlClockSet. If changed, update the value at
@@ -67,6 +66,12 @@
 // If the FPU is used at main, please enable it at startup_gcc.c first
 
 int main() {
+	uint32_t reset_cause = ROM_SysCtlResetCauseGet();
+	ROM_SysCtlResetCauseClear(reset_cause);
+	
+	if (reset_cause == SYSCTL_CAUSE_SW || reset_cause == SYSCTL_CAUSE_WDOG0)
+		leds_status(4095);
+	
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);	// UART
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);	// PWM outputs
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);	// PWM outputs
@@ -76,24 +81,37 @@ int main() {
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_PWM1);		// PWM Module 1
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);	// UART 0
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_ADC0);		// ADC0
+	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_WDOG0);	// Watchdog 0
 	
 	pwm_init();
 	motors_init();
 	leds_init();
 	UART_init();
 	voltwatch_init();
-	// enable interrupts
+	watchdog_init();
+	// Enable interrupts
 	ROM_IntMasterEnable();
 	
+	int8_t curr_speed_left = 0, curr_speed_right = 0;
     for (;;) {
-		uint8_t uart_value;
-		uart_value = UARTCharGet(UART0_BASE);
+		if (curr_speed_left != speed_left) {
+			if (curr_speed_left < speed_left)
+				curr_speed_left++;
+			else
+				curr_speed_left--;
+			motor_left(curr_speed_left);
+		}
+		if (curr_speed_right != speed_right) {
+			if (curr_speed_right < speed_right)
+				curr_speed_right++;
+			else
+				curr_speed_right--;
+			motor_right(curr_speed_right);
+		}
 		
-		//pwm_value = uart_value * (SYSTEM_CLOCK / PWM_FREQ_HZ  / PWM_CLOCK_DIV) / 255;
-		//pwm_value = (pwm_value == SYSTEM_CLOCK / PWM_FREQ_HZ  / PWM_CLOCK_DIV) ? SYSTEM_CLOCK / PWM_FREQ_HZ  / PWM_CLOCK_DIV - 1 : pwm_value;
+		if (curr_speed_right == 0 && curr_speed_left == 0)
+			watchdog_reset();
 		
-		//leds_r(SYSTEM_CLOCK / PWM_FREQ_HZ  / PWM_CLOCK_DIV - 1);
-		//leds_g(100);
-		leds_b(uart_value);
-    }
+		ROM_SysCtlDelay(RAMP);
+	}
 }

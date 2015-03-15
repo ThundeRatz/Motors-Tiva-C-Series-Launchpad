@@ -44,28 +44,53 @@
 #define __LEDS_H__
 
 #include "driverlib/pwm.h"
-#include "driverlib/rom_map.h"
+#include "driverlib/rom.h"
 
 void leds_init();
 
+///@addtogroup leds
+///@{
+
+/**
+ * Set red LED.
+ * @param[in] brightness red value
+ */
 static inline void leds_r(uint32_t brightness) {
 	ROM_PWMPulseWidthSet(PWM1_BASE, PWM_OUT_5, brightness);
 }
 
+/**
+ * Set blue LED.
+ * @param[in] brightness blue value
+ */
 static inline void leds_b(uint32_t brightness) {
 	ROM_PWMPulseWidthSet(PWM1_BASE, PWM_OUT_6, brightness);
 }
 
+/**
+ * Set green LED.
+ * @param[in] brightness green value
+ */
 static inline void leds_g(uint32_t brightness) {
 	ROM_PWMPulseWidthSet(PWM1_BASE, PWM_OUT_7, brightness);
 }
 
+/**
+ * Set status LED.
+ * @param[in] brightness status brightness value
+ */
 static inline void leds_status(uint32_t brightness) {
 	ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_0, brightness);
 }
 
+/**
+ * Set low battery LED.
+ * @param[in] brightness low battery brightness value
+ */
 static inline void leds_lbatt(uint32_t brightness) {
 	ROM_PWMPulseWidthSet(PWM0_BASE, PWM_OUT_1, brightness);
 }
 
 #endif
+
+///@}
