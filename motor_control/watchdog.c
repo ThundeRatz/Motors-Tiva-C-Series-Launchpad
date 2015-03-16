@@ -63,7 +63,7 @@ void watchdog_ISR();
 void watchdog_init() {
 	ROM_WatchdogResetEnable(WATCHDOG0_BASE);
 	ROM_WatchdogStallEnable(WATCHDOG0_BASE);
-	ROM_WatchdogReloadSet(WATCHDOG0_BASE, 30000000);
+	ROM_WatchdogReloadSet(WATCHDOG0_BASE, 3000000);
 	ROM_IntPrioritySet(INT_WATCHDOG, 0);
 	///@todo Is this even needed?
 	WatchdogIntRegister(WATCHDOG0_BASE, watchdog_ISR);
@@ -78,9 +78,22 @@ void watchdog_init() {
  */
 void watchdog_reset() {
 	ROM_WatchdogUnlock(WATCHDOG0_BASE);
-	ROM_WatchdogReloadSet(WATCHDOG0_BASE, 30000000);
+	ROM_WatchdogReloadSet(WATCHDOG0_BASE, 3000000);
 	ROM_WatchdogLock(WATCHDOG0_BASE);
 }
+
+#ifdef DEBUG
+/**
+ * Disable watchdog.
+ * Useful when debugging. 
+ */
+void watchdog_disable() {
+	ROM_WatchdogUnlock(WATCHDOG0_BASE);
+	WatchdogIntUnregister(WATCHDOG0_BASE);
+	ROM_WatchdogResetDisable(WATCHDOG0_BASE);
+	ROM_WatchdogLock(WATCHDOG0_BASE);
+}
+#endif
 
 /** 
  * Watchdog Interrupt Service Routine.

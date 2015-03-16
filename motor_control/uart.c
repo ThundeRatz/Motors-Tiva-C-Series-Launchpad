@@ -75,8 +75,16 @@ void UART_init() {
 	
 	ROM_IntPrioritySet(INT_UART0, 1 << 5);
 	ROM_IntEnable(INT_UART0);
+
+#ifdef DEBUG
+	ROM_UARTIntEnable(UART0_BASE, UART_INT_RI | UART_INT_CTS | UART_INT_DCD | 
+		UART_INT_DSR | UART_INT_RX | UART_INT_TX | UART_INT_RT | UART_INT_FE |
+		UART_INT_PE | UART_INT_BE | UART_INT_OE | UART_INT_9BIT | UART_INT_DMARX |
+		UART_INT_DMATX);
+#else
 	ROM_UARTIntEnable(UART0_BASE, UART_INT_OE | UART_INT_BE |
-		UART_INT_PE | UART_INT_FE | UART_INT_RT | UART_INT_RX);
+		UART_INT_PE | UART_INT_FE | UART_INT_RT | UART_INT_RX | UART_INT_DMARX);
+#endif
 }
 
 #ifdef DEBUG
@@ -94,9 +102,9 @@ void UART_init() {
 // 12 = UART_INT_9BIT
 // 16 = UART_INT_DMARX
 // 17 = UART_INT_DMATX
-// Set unused numbers to 0xffffffff to identify them easily when debugging
-static unsigned int error_count[32] = {[11] = 0xffffffff, [13] = 0xffffffff,
-	[14] = 0xffffffff, [15] = 0xffffffff, [18 ... 31] = 0xffffffff};
+// Set unused numbers to -1 to identify them easily when debugging
+static int error_count[32] = {[11] = -1, [13] = -1,
+	[14] = -1, [15] = -1, [18 ... 31] = -1};
 #endif
 
 /**
@@ -106,7 +114,6 @@ static unsigned int error_count[32] = {[11] = 0xffffffff, [13] = 0xffffffff,
  */
 void UART_ISR() {
 	uint32_t int_status;
-	leds_b(4000);
 	int_status = ROM_UARTIntStatus(UART0_BASE, true);
 	ROM_UARTIntClear(UART0_BASE, int_status);
 	
@@ -114,20 +121,35 @@ void UART_ISR() {
 	for (; int_status; int_status &= int_status - 1) {
 		switch (int_status & -int_status) {
 			case UART_INT_RX:
-			watchdog_reset();
-			while (ROM_UARTCharsAvail(UART0_BASE))
-				motors(ROM_UARTCharGet(UART0_BASE));
 			break;
 			
-			case UART_INT_OE: case UART_INT_BE:
-			case UART_INT_PE: case UART_INT_FE:
-			case UART_INT_RT:
-			leds_status(4095);
+			// Unexpected status:
+			case UART_INT_RI:		case  UART_INT_CTS:
+			case UART_INT_DCD:		case UART_INT_DSR:
+			case UART_INT_TX:
+			case UART_INT_RT:		case UART_INT_FE:
+			case UART_INT_PE:		case UART_INT_BE:
+			case UART_INT_OE:		case UART_INT_9BIT:
+			case UART_INT_DMARX:	case UART_INT_DMATX:
+			// UART errors are common and will keep triggering the STATUS LED if
+			// the following line is uncommented. Errors are usually harmless,
+			// so we keep the LED for more severe errors (watchdog timeout,
+			// brownout...)
+			//leds_status(4095);
 #ifdef DEBUG
 			error_count[__builtin_clz(int_status)]++;
 #endif
 			break;
 		}
+	}
+	
+	// This was previously inside "case UART_INT_RX:", but for some reason most
+	// received bytes generate an RX interrupt but don't set the UART_INT_RX flag
+	if (ROM_UARTCharsAvail(UART0_BASE)) {
+		watchdog_reset();
+		do
+			motors(ROM_UARTCharGet(UART0_BASE));
+		while (ROM_UARTCharsAvail(UART0_BASE));
 	}
 }
 

@@ -45,5 +45,6 @@
 
 void watchdog_init();
 void watchdog_reset();
+void watchdog_disable();
 
 #endif

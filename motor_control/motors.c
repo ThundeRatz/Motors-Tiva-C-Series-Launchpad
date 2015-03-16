@@ -52,14 +52,19 @@
 #define MOTOR_RIGHT	(1 << 7)
 #define MOTOR_REV	(1 << 6)
 
+#ifdef DEBUG
+#include "leds.h"
+#include "watchdog.h"
+#endif
+
 ///@defgroup motors Motors
 ///@{
 
 /// Left speed command received from UART0
-uint8_t speed_left;
+int8_t speed_left;
 
 /// Right speed command received from UART0
-uint8_t speed_right;
+int8_t speed_right;
 
 /**
  * Initialize motors PWM output.
@@ -100,6 +105,8 @@ void motors_init() {
 	
 	// Enable PWM
 	ROM_PWMOutputState(PWM0_BASE, PWM_OUT_2_BIT | PWM_OUT_3_BIT | PWM_OUT_6_BIT | PWM_OUT_7_BIT, true);
+	
+	speed_left = speed_right = 0;
 }
 
 /**
@@ -110,9 +117,19 @@ void motors_init() {
  * @parblock
  * command received. Bit 7 chooses the motor (0 = left, 1 = right). Bit 6
  * reverses direction. Bits 0..5 choose speed.
+ * 
+ * Since we are using Signed magnitude, we had a spare -0 command. The -0 command
+ * on motor 0 with DEBUG defined disables the watchdog to help debugging.
  * @endparblock
  */
 void motors(uint8_t command) {
+#ifdef DEBUG
+	if (command == MOTOR_REV) {
+		watchdog_disable();
+		leds_status(4095);
+		return;
+	}
+#endif
 	if (command & MOTOR_RIGHT)
 		if (command & MOTOR_REV)
 			speed_right = -(command & 0x3f);

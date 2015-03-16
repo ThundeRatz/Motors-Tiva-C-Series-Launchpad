@@ -69,9 +69,6 @@ int main() {
 	uint32_t reset_cause = ROM_SysCtlResetCauseGet();
 	ROM_SysCtlResetCauseClear(reset_cause);
 	
-	if (reset_cause == SYSCTL_CAUSE_SW || reset_cause == SYSCTL_CAUSE_WDOG0)
-		leds_status(4095);
-	
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);	// UART
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);	// PWM outputs
 	ROM_SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOC);	// PWM outputs
@@ -89,6 +86,14 @@ int main() {
 	UART_init();
 	voltwatch_init();
 	watchdog_init();
+	
+	switch (reset_cause) {
+		case SYSCTL_CAUSE_SW: case SYSCTL_CAUSE_WDOG0:
+		case SYSCTL_CAUSE_BOR:
+		leds_status(4095);
+		break;
+	}
+	
 	// Enable interrupts
 	ROM_IntMasterEnable();
 	
@@ -109,7 +114,7 @@ int main() {
 			motor_right(curr_speed_right);
 		}
 		
-		if (curr_speed_right == 0 && curr_speed_left == 0)
+		if (speed_left == 0 && speed_right == 0)
 			watchdog_reset();
 		
 		ROM_SysCtlDelay(RAMP);
